@@ -1,6 +1,5 @@
-package com.coredesk.controller;
+package com.coredesk.exception;
 
-import com.coredesk.AppException;
 import com.coredesk.dto.RestResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;

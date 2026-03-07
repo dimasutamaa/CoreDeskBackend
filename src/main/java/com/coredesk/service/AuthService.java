@@ -1,6 +1,6 @@
 package com.coredesk.service;
 
-import com.coredesk.AppException;
+import com.coredesk.exception.AppException;
 import com.coredesk.dto.AuthRequest;
 import com.coredesk.dto.AuthResponse;
 import com.coredesk.dto.UserInfo;
