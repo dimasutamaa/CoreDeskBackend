@@ -1,12 +1,10 @@
 package com.coredesk.dto;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-@JsonPropertyOrder({"code", "status", "message", "data"})
 public class RestResponse {
     private String code;
     private String status;
