@@ -45,6 +45,10 @@ public class UserService {
         data.put("inProgress", ticketRepository.countByStatus(TicketStatus.IN_PROGRESS));
         data.put("resolved", ticketRepository.countByStatus(TicketStatus.RESOLVED));
         data.put("closed", ticketRepository.countByStatus(TicketStatus.CLOSED));
+
+        data.put("totalUsers", userRepository.countByRole("USER"));
+        data.put("admins", userRepository.countByRole("ADMIN"));
+        data.put("agents", userRepository.countByRole("AGENT"));
         return data;
     }
 
