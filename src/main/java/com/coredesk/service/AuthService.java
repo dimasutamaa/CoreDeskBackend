@@ -7,6 +7,7 @@ import com.coredesk.dto.UserInfo;
 import com.coredesk.model.User;
 import com.coredesk.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,7 +27,7 @@ public class AuthService {
 
     public User createUser(User user) throws AppException {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            throw new AppException("User already exist");
+            throw new AppException("User already exist", HttpStatus.BAD_REQUEST);
         }
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
@@ -39,11 +40,11 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (AuthenticationException e) {
-            throw new AppException("Invalid email or password");
+            throw new AppException("Invalid email or password", HttpStatus.BAD_REQUEST);
         }
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AppException("User not found"));
+                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
 
         String token = jwtTokenService.generateAccessToken(user);
 

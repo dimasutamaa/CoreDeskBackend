@@ -1,6 +1,5 @@
 package com.coredesk.controller;
 
-import com.coredesk.exception.AppException;
 import com.coredesk.dto.AuthRequest;
 import com.coredesk.dto.RestResponse;
 import com.coredesk.model.User;
@@ -16,13 +15,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/users")
-    public RestResponse createUser(@RequestBody User user) throws AppException {
+    public RestResponse createUser(@RequestBody User user) {
         var data = authService.createUser(user);
         return new RestResponse(data);
     }
 
     @PostMapping("/login")
-    public Object login(@RequestBody AuthRequest authRequest) throws AppException {
+    public Object login(@RequestBody AuthRequest authRequest) {
         var data = authService.login(authRequest);
         return new RestResponse(data);
     }

@@ -2,6 +2,7 @@ package com.coredesk.exception;
 
 import com.coredesk.dto.RestResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -10,9 +11,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public RestResponse handleAppException(AppException e) {
-        return new RestResponse(HttpStatus.BAD_REQUEST.toString(), e.getMessage());
+    public ResponseEntity<RestResponse> handleAppException(AppException e) {
+        return ResponseEntity.status(e.getStatus())
+                .body(new RestResponse(e.getStatus().toString(), e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

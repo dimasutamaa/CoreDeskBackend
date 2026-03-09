@@ -1,7 +1,14 @@
 package com.coredesk.exception;
 
-public class AppException extends Exception {
-    public AppException(String message) {
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
+
+@Getter
+public class AppException extends RuntimeException {
+    private final HttpStatus status;
+
+    public AppException(String message, HttpStatus status) {
         super(message);
+        this.status = status;
     }
 }
