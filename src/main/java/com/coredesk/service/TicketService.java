@@ -1,6 +1,8 @@
 package com.coredesk.service;
 
+import com.coredesk.dto.FilterCriteria;
 import com.coredesk.dto.TicketRequest;
+import com.coredesk.enums.Priority;
 import com.coredesk.enums.TicketStatus;
 import com.coredesk.exception.AppException;
 import com.coredesk.model.LogHistory;
@@ -9,12 +11,17 @@ import com.coredesk.model.User;
 import com.coredesk.repository.LogHistoryRepository;
 import com.coredesk.repository.TicketRepository;
 import com.coredesk.repository.UserRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -49,8 +56,62 @@ public class TicketService {
         }
     }
 
-    public List<Ticket> getUserTickets(String email) {
-        return ticketRepository.findByCreatedBy_EmailOrderByCreatedAtDesc(email);
+    public List<Ticket> getUserTickets(String email, FilterCriteria filter) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+
+        Specification<Ticket> ticketQuery = buildTicketQuery(user, filter);
+
+        return ticketRepository.findAll(ticketQuery);
+    }
+
+    private Specification<Ticket> buildTicketQuery(User user, FilterCriteria filter) {
+        return (ticketRoot, query, cb) -> {
+            List<Predicate> conditions = new ArrayList<>();
+
+            applyRoleFilter(user, ticketRoot, cb, conditions);
+            applyFilterCriteria(filter, ticketRoot, cb, conditions);
+
+            query.orderBy(cb.desc(ticketRoot.get("createdAt")));
+            return cb.and(conditions.toArray(new Predicate[0]));
+        };
+    }
+
+    private void applyRoleFilter(User user, Root<Ticket> ticketRoot, CriteriaBuilder cb, List<Predicate> conditions) {
+        String role = user.getRole();
+        if ("USER".equals(role)) {
+            conditions.add(cb.equal(ticketRoot.get("createdBy").get("id"), user.getId()));
+        }
+        if ("AGENT".equals(role)) {
+            conditions.add(cb.equal(ticketRoot.get("assignedTo").get("id"), user.getId()));
+        }
+    }
+
+    private void applyFilterCriteria(FilterCriteria filter, Root<Ticket> ticketRoot, CriteriaBuilder cb, List<Predicate> conditions) {
+        if (filter == null) return;
+
+        if (filter.getTitle() != null) {
+            String title = "%" + filter.getTitle().toLowerCase() + "%";
+            conditions.add(cb.like(cb.lower(ticketRoot.get("title")), title));
+        }
+        if (filter.getStatus() != null) {
+            TicketStatus status = TicketStatus.valueOf(filter.getStatus());
+            conditions.add(cb.equal(ticketRoot.get("status"), status));
+        }
+        if (filter.getPriority() != null) {
+            Priority priority = Priority.valueOf(filter.getPriority());
+            conditions.add(cb.equal(ticketRoot.get("priority"), priority));
+        }
+        if (filter.getAssignedTo() != null) {
+            conditions.add(cb.equal(ticketRoot.get("assignedTo").get("id"), filter.getAssignedTo()));
+        }
+        if (filter.getCreatedBy() != null) {
+            conditions.add(cb.equal(ticketRoot.get("createdBy").get("id"), filter.getCreatedBy()));
+        }
+        if (filter.getFrom() != null && filter.getTo() != null) {
+            conditions.add(cb.greaterThanOrEqualTo(ticketRoot.get("createdAt"), filter.getFrom().atStartOfDay()));
+            conditions.add(cb.lessThanOrEqualTo(ticketRoot.get("createdAt"), filter.getTo().atTime(23, 59, 59)));
+        }
     }
 
     private void createLogHistory(Ticket ticket, User user, TicketStatus status, String description) {

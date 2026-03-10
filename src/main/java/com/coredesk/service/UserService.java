@@ -11,7 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -30,6 +32,16 @@ public class UserService {
             case "ADMIN" -> getAdminDataRecap();
             default -> throw new AppException("Unsupported role: " + user.getRole(), HttpStatus.BAD_REQUEST);
         };
+    }
+
+    public Map<Long, String> getUsersByRole(String role) {
+        List<User> users = userRepository.findByRole(role);
+        return users.stream().collect(
+                Collectors.toMap(
+                        User::getId,
+                        User::getDisplayName
+                )
+        );
     }
 
     private Map<String, Object> getUserDataRecap(Long userId) {
