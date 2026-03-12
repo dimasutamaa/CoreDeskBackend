@@ -21,8 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -48,7 +47,7 @@ public class TicketService {
 
         try {
             Ticket savedTicket = ticketRepository.save(ticket);
-            createLogHistory(savedTicket, user, savedTicket.getStatus(), "Ticket created");
+            createLogHistory(savedTicket.getId(), user.getDisplayName(), savedTicket.getStatus(), "Ticket created");
             return savedTicket;
         } catch (Exception e) {
             log.error("Failed to create ticket: {}", e.getMessage(), e);
@@ -63,6 +62,32 @@ public class TicketService {
         Specification<Ticket> ticketQuery = buildTicketQuery(user, filter);
 
         return ticketRepository.findAll(ticketQuery);
+    }
+
+    public Map<String, Object> getTicketDetail(Long ticketId) {
+        Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
+        Map<String, Object> data = new HashMap<>();
+
+        if (ticketOpt.isPresent()) {
+            Ticket ticket = ticketOpt.get();
+            List<LogHistory> logHistories = logHistoryRepository.findByTicketIdOrderByCreatedAtDesc(ticketId);
+
+            data.put("ticket", ticket);
+            data.put("logHistories", logHistories);
+        }
+
+        return data;
+    }
+
+    public boolean checkUser(String email, Long ticketId, String role) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
+
+        if ("ADMIN".equals(role) && ticketRepository.existsByProcessedBy_EmailAndAssignedToNull(email)) {
+            return ticket.getProcessedBy() != null && ticket.getProcessedBy().getEmail().equals(email);
+        }
+
+        return true;
     }
 
     private Specification<Ticket> buildTicketQuery(User user, FilterCriteria filter) {
@@ -114,10 +139,10 @@ public class TicketService {
         }
     }
 
-    private void createLogHistory(Ticket ticket, User user, TicketStatus status, String description) {
+    private void createLogHistory(Long ticketId, String username, TicketStatus status, String description) {
         LogHistory log = new LogHistory();
-        log.setTicket(ticket);
-        log.setCreatedBy(user);
+        log.setTicketId(ticketId);
+        log.setCreatedBy(username);
         log.setStatus(status.name());
         log.setDescription(description);
 

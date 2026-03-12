@@ -44,12 +44,12 @@ public class Ticket {
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "processed_by")
+    private User processedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to")
     private User assignedTo;
-
-    @JsonIgnore
-    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL)
-    private List<LogHistory> logHistories;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

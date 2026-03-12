@@ -37,6 +37,20 @@ public class TicketController {
         return new RestResponse(data);
     }
 
+    @GetMapping("/{ticketId}")
+    public RestResponse getTicketDetail(@PathVariable("ticketId") Long ticketId) {
+        var data = ticketService.getTicketDetail(ticketId);
+        return new RestResponse(data);
+    }
+
+    @GetMapping("/{ticketId}/checkUser")
+    public RestResponse checkUser(@AuthenticationPrincipal UserDetails userDetails,
+                                  @PathVariable("ticketId") Long ticketId,
+                                  @RequestParam(value = "role", required = true) String role) {
+        var data = ticketService.checkUser(userDetails.getUsername(), ticketId, role);
+        return new RestResponse(data);
+    }
+
     @GetMapping("/filters")
     public RestResponse getFilterOptions(@AuthenticationPrincipal UserDetails userDetails) {
         Map<String, Object> data = new HashMap<>();

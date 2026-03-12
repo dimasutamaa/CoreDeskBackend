@@ -20,14 +20,8 @@ public class LogHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "ticket_id")
-    private Ticket ticket;
-
-    @ManyToOne
-    @JoinColumn(name = "created_by")
-    private User createdBy;
-
+    private Long ticketId;
+    private String createdBy;
     private String status;
     private String description;
 

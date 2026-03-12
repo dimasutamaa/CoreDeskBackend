@@ -12,4 +12,5 @@ import java.util.List;
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
     long countByCreatedBy_IdAndStatus(Long id, TicketStatus status);
     long countByStatus(TicketStatus status);
+    boolean existsByProcessedBy_EmailAndAssignedToNull(String email);
 }
