@@ -21,8 +21,9 @@ public class UserController {
     }
 
     @GetMapping("/users/recap")
-    public RestResponse getDataRecap(@AuthenticationPrincipal UserDetails userDetails) {
-        var data = userService.getDataRecapByRole(userDetails.getUsername());
+    public RestResponse getDataRecap(@AuthenticationPrincipal UserDetails userDetails,
+                                     @RequestParam(value = "role", required = true) String role) {
+        var data = userService.getDataRecapByRole(userDetails.getUsername(), role);
         return new RestResponse(data);
     }
 

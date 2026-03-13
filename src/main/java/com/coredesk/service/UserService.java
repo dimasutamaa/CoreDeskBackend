@@ -23,14 +23,12 @@ public class UserService {
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
 
-    public Map<String, Object> getDataRecapByRole(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
-
-        return switch (user.getRole()) {
-            case "USER" -> getUserDataRecap(user.getId());
+    public Map<String, Object> getDataRecapByRole(String email, String role) {
+        return switch (role) {
+            case "USER" -> getUserDataRecap(email);
             case "ADMIN" -> getAdminDataRecap();
-            default -> throw new AppException("Unsupported role: " + user.getRole(), HttpStatus.BAD_REQUEST);
+            case "AGENT" -> getAgentDataRecap(email);
+            default -> throw new AppException("Unsupported role: " + role, HttpStatus.BAD_REQUEST);
         };
     }
 
@@ -44,10 +42,10 @@ public class UserService {
         );
     }
 
-    private Map<String, Object> getUserDataRecap(Long userId) {
+    private Map<String, Object> getUserDataRecap(String email) {
         Map<String, Object> data = new HashMap<>();
-        data.put("open", ticketRepository.countByCreatedBy_IdAndStatus(userId, TicketStatus.OPEN));
-        data.put("closed", ticketRepository.countByCreatedBy_IdAndStatus(userId, TicketStatus.CLOSED));
+        data.put("open", ticketRepository.countByCreatedBy_EmailAndStatus(email, TicketStatus.OPEN));
+        data.put("closed", ticketRepository.countByCreatedBy_EmailAndStatus(email, TicketStatus.CLOSED));
         return data;
     }
 
@@ -61,6 +59,14 @@ public class UserService {
         data.put("totalUsers", userRepository.countByRole("USER"));
         data.put("admins", userRepository.countByRole("ADMIN"));
         data.put("agents", userRepository.countByRole("AGENT"));
+        return data;
+    }
+
+    private Map<String, Object> getAgentDataRecap(String email) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("assigned", ticketRepository.countByAssignedTo_EmailAndStatus(email, TicketStatus.ASSIGNED));
+        data.put("inProgress", ticketRepository.countByAssignedTo_EmailAndStatus(email, TicketStatus.IN_PROGRESS));
+        data.put("resolved", ticketRepository.countByAssignedTo_EmailAndStatus(email, TicketStatus.RESOLVED));
         return data;
     }
 

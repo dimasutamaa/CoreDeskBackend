@@ -13,8 +13,9 @@ import java.util.Optional;
 
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
-    long countByCreatedBy_IdAndStatus(Long id, TicketStatus status);
     long countByStatus(TicketStatus status);
+    long countByCreatedBy_EmailAndStatus(String email, TicketStatus status);
+    long countByAssignedTo_EmailAndStatus(String email, TicketStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM Ticket t WHERE t.id = ?1")

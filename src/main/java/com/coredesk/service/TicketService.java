@@ -86,25 +86,8 @@ public class TicketService {
         if (ticketOpt.isPresent()) {
             Ticket ticket = ticketOpt.get();
 
-            if ("ADMIN".equals(role)) {
-                if (ticket.getProcessedBy() != null && !ticket.getProcessedBy().equals(user)) {
-                    throw new AppException("This ticket already processed by other user", HttpStatus.FORBIDDEN);
-                }
-
-                if (ticket.getStatus().equals(TicketStatus.OPEN)) {
-                    Long assignedTo = Long.valueOf(body.get("assignedTo").toString());
-                    User selectedUser = userRepository.findById(assignedTo)
-                            .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
-
-                    ticket.setStatus(TicketStatus.ASSIGNED);
-                    ticket.setAssignedTo(selectedUser);
-                    ticket.setProcessedBy(user);
-
-                    createLogHistory(ticketId, user.getDisplayName(),
-                            ticket.getStatus(), "Ticket assigned to: " + selectedUser.getDisplayName());
-                }
-            }
-//            if ("AGENT".equals(role)) {}
+            if ("ADMIN".equals(role)) handleAdminProcessTicket(ticket, user, body);
+            else if ("AGENT".equals(role)) handleAgentProcessTicket(ticket, user);
 
             ticketRepository.save(ticket);
         }
@@ -126,8 +109,7 @@ public class TicketService {
         String role = user.getRole();
         if ("USER".equals(role)) {
             conditions.add(cb.equal(ticketRoot.get("createdBy").get("id"), user.getId()));
-        }
-        if ("AGENT".equals(role)) {
+        } else if ("AGENT".equals(role)) {
             conditions.add(cb.equal(ticketRoot.get("assignedTo").get("id"), user.getId()));
         }
     }
@@ -156,6 +138,35 @@ public class TicketService {
         if (filter.getFrom() != null && filter.getTo() != null) {
             conditions.add(cb.greaterThanOrEqualTo(ticketRoot.get("createdAt"), filter.getFrom().atStartOfDay()));
             conditions.add(cb.lessThanOrEqualTo(ticketRoot.get("createdAt"), filter.getTo().atTime(23, 59, 59)));
+        }
+    }
+
+    private void handleAdminProcessTicket(Ticket ticket, User user, Map<String, Object> body) {
+        if (ticket.getProcessedBy() != null && !ticket.getProcessedBy().equals(user)) {
+            throw new AppException("This ticket already processed by other user", HttpStatus.FORBIDDEN);
+        }
+
+        if (ticket.getStatus().equals(TicketStatus.OPEN)) {
+            Long assignedTo = Long.valueOf(body.get("assignedTo").toString());
+            User selectedUser = userRepository.findById(assignedTo)
+                    .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+
+            ticket.setStatus(TicketStatus.ASSIGNED);
+            ticket.setAssignedTo(selectedUser);
+            ticket.setProcessedBy(user);
+
+            createLogHistory(ticket.getId(), user.getDisplayName(),
+                    ticket.getStatus(), "Ticket assigned to: " + selectedUser.getDisplayName());
+        }
+    }
+
+    private void handleAgentProcessTicket(Ticket ticket, User user) {
+        if (ticket.getStatus().equals(TicketStatus.ASSIGNED)) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Agent is working on the ticket");
+        } else if (ticket.getStatus().equals(TicketStatus.IN_PROGRESS)) {
+            ticket.setStatus(TicketStatus.RESOLVED);
+            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Ticket resolved");
         }
     }
 
