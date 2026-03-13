@@ -56,8 +56,7 @@ public class TicketService {
     }
 
     public List<Ticket> getUserTickets(String email, FilterCriteria filter) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+        User user = getUserByEmail(email);
 
         Specification<Ticket> ticketQuery = buildTicketQuery(user, filter);
 
@@ -79,15 +78,36 @@ public class TicketService {
         return data;
     }
 
-    public boolean checkUser(String email, Long ticketId, String role) {
-        Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
+    @Transactional
+    public void processTicket(String email, Long ticketId, Map<String, Object> body, String role) {
+        User user = getUserByEmail(email);
+        Optional<Ticket> ticketOpt = ticketRepository.findForProcess(ticketId);
 
-        if ("ADMIN".equals(role) && ticketRepository.existsByProcessedBy_EmailAndAssignedToNull(email)) {
-            return ticket.getProcessedBy() != null && ticket.getProcessedBy().getEmail().equals(email);
+        if (ticketOpt.isPresent()) {
+            Ticket ticket = ticketOpt.get();
+
+            if ("ADMIN".equals(role)) {
+                if (ticket.getProcessedBy() != null && !ticket.getProcessedBy().equals(user)) {
+                    throw new AppException("This ticket already processed by other user", HttpStatus.FORBIDDEN);
+                }
+
+                if (ticket.getStatus().equals(TicketStatus.OPEN)) {
+                    Long assignedTo = Long.valueOf(body.get("assignedTo").toString());
+                    User selectedUser = userRepository.findById(assignedTo)
+                            .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+
+                    ticket.setStatus(TicketStatus.ASSIGNED);
+                    ticket.setAssignedTo(selectedUser);
+                    ticket.setProcessedBy(user);
+
+                    createLogHistory(ticketId, user.getDisplayName(),
+                            ticket.getStatus(), "Ticket assigned to: " + selectedUser.getDisplayName());
+                }
+            }
+//            if ("AGENT".equals(role)) {}
+
+            ticketRepository.save(ticket);
         }
-
-        return true;
     }
 
     private Specification<Ticket> buildTicketQuery(User user, FilterCriteria filter) {
@@ -147,6 +167,11 @@ public class TicketService {
         log.setDescription(description);
 
         logHistoryRepository.save(log);
+    }
+
+    private User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
     }
 
 }

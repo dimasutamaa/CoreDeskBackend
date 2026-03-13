@@ -7,6 +7,7 @@ import com.coredesk.service.TicketService;
 import com.coredesk.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/tickets")
@@ -43,18 +45,19 @@ public class TicketController {
         return new RestResponse(data);
     }
 
-    @GetMapping("/{ticketId}/checkUser")
-    public RestResponse checkUser(@AuthenticationPrincipal UserDetails userDetails,
+    @PutMapping("/{ticketId}/process")
+    public RestResponse processTicket(@AuthenticationPrincipal UserDetails userDetails,
                                   @PathVariable("ticketId") Long ticketId,
+                                  @RequestBody Map<String, Object> body,
                                   @RequestParam(value = "role", required = true) String role) {
-        var data = ticketService.checkUser(userDetails.getUsername(), ticketId, role);
-        return new RestResponse(data);
+        ticketService.processTicket(userDetails.getUsername(), ticketId, body, role);
+        return new RestResponse();
     }
 
     @GetMapping("/filters")
-    public RestResponse getFilterOptions(@AuthenticationPrincipal UserDetails userDetails) {
+    public RestResponse getFilterOptions() {
         Map<String, Object> data = new HashMap<>();
-        data.put("statuses", List.of("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"));
+        data.put("statuses", List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED"));
         data.put("priorities", List.of("LOW", "MEDIUM", "HIGH"));
         data.put("agents", userService.getUsersByRole("AGENT"));
         data.put("users", userService.getUsersByRole("USER"));

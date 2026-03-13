@@ -11,6 +11,13 @@ public class RestResponse {
     private String message;
     private Object data;
 
+    public RestResponse() {
+        this.code = "00";
+        this.status = "Success";
+        this.message = "Success";
+        this.data = null;
+    }
+
     public RestResponse(Object data) {
         this.code = "00";
         this.status = "Success";
