@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Slf4j
@@ -42,6 +43,7 @@ public class TicketService {
         ticket.setDescription(request.getDescription());
         ticket.setStatus(request.getStatus());
         ticket.setPriority(request.getPriority());
+        ticket.setSlaDate(calculateSlaDate(request.getPriority()));
         ticket.setCreatedBy(user);
         ticket.setAssignedTo(null);
 
@@ -63,12 +65,18 @@ public class TicketService {
         return ticketRepository.findAll(ticketQuery);
     }
 
-    public Map<String, Object> getTicketDetail(Long ticketId) {
+    public Map<String, Object> getTicketDetail(String email, Long ticketId, String role) {
+        User user = getUserByEmail(email);
         Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
         Map<String, Object> data = new HashMap<>();
 
         if (ticketOpt.isPresent()) {
             Ticket ticket = ticketOpt.get();
+
+            if ("AGENT".equals(role) && !ticket.getAssignedTo().equals(user)) {
+                throw new AppException("This ticket belongs to another agent", HttpStatus.FORBIDDEN);
+            }
+
             List<LogHistory> logHistories = logHistoryRepository.findByTicketIdOrderByCreatedAtDesc(ticketId);
 
             data.put("ticket", ticket);
@@ -168,6 +176,14 @@ public class TicketService {
             ticket.setStatus(TicketStatus.RESOLVED);
             createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Ticket resolved");
         }
+    }
+
+    private LocalDateTime calculateSlaDate(Priority priority) {
+        return switch (priority) {
+            case Priority.LOW -> LocalDateTime.now().plusHours(72);
+            case Priority.MEDIUM -> LocalDateTime.now().plusHours(24);
+            case Priority.HIGH -> LocalDateTime.now().plusHours(8);
+        };
     }
 
     private void createLogHistory(Long ticketId, String username, TicketStatus status, String description) {

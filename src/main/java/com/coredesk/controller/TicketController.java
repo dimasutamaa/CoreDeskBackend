@@ -40,8 +40,10 @@ public class TicketController {
     }
 
     @GetMapping("/{ticketId}")
-    public RestResponse getTicketDetail(@PathVariable("ticketId") Long ticketId) {
-        var data = ticketService.getTicketDetail(ticketId);
+    public RestResponse getTicketDetail(@AuthenticationPrincipal UserDetails userDetails,
+                                        @PathVariable("ticketId") Long ticketId,
+                                        @RequestParam(value = "role", required = false) String role) {
+        var data = ticketService.getTicketDetail(userDetails.getUsername(), ticketId, role);
         return new RestResponse(data);
     }
 
