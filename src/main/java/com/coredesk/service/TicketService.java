@@ -5,9 +5,11 @@ import com.coredesk.dto.TicketRequest;
 import com.coredesk.enums.Priority;
 import com.coredesk.enums.TicketStatus;
 import com.coredesk.exception.AppException;
+import com.coredesk.model.Comment;
 import com.coredesk.model.LogHistory;
 import com.coredesk.model.Ticket;
 import com.coredesk.model.User;
+import com.coredesk.repository.CommentRepository;
 import com.coredesk.repository.LogHistoryRepository;
 import com.coredesk.repository.TicketRepository;
 import com.coredesk.repository.UserRepository;
@@ -32,6 +34,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final LogHistoryRepository logHistoryRepository;
+    private final CommentRepository commentRepository;
 
     @Transactional
     public Ticket createTicket(TicketRequest request) {
@@ -73,13 +76,19 @@ public class TicketService {
         if (ticketOpt.isPresent()) {
             Ticket ticket = ticketOpt.get();
 
+            if ("USER".equals(role) && !ticket.getCreatedBy().equals(user)) {
+                throw new AppException("You cannot view the details of this ticket", HttpStatus.FORBIDDEN);
+            }
+
             if ("AGENT".equals(role) && !ticket.getAssignedTo().equals(user)) {
                 throw new AppException("This ticket belongs to another agent", HttpStatus.FORBIDDEN);
             }
 
+            List<Comment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
             List<LogHistory> logHistories = logHistoryRepository.findByTicketIdOrderByCreatedAtDesc(ticketId);
 
             data.put("ticket", ticket);
+            data.put("comments", comments);
             data.put("logHistories", logHistories);
         }
 
@@ -99,6 +108,37 @@ public class TicketService {
 
             ticketRepository.save(ticket);
         }
+    }
+
+    @Transactional
+    public void addComment(String email, Long ticketId, Map<String, Object> body) {
+        User user = getUserByEmail(email);
+        Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
+
+        if (ticketOpt.isPresent()) {
+            String message = (body.get("message") != null ? body.get("message").toString() : null);
+            if (message == null || message.isBlank()) {
+                throw new IllegalArgumentException("Message cannot be null or blank");
+            }
+
+            Comment comment = Comment.builder()
+                    .message(message)
+                    .ticketId(ticketId)
+                    .user(user)
+                    .build();
+
+            commentRepository.save(comment);
+        }
+    }
+
+    public List<Comment> getTicketComments(Long ticketId) {
+        Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
+
+        if (ticketOpt.isPresent()) {
+            return commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
+        }
+
+        return List.of();
     }
 
     private Specification<Ticket> buildTicketQuery(User user, FilterCriteria filter) {
