@@ -62,35 +62,29 @@ public class TicketService {
 
     public List<Ticket> getUserTickets(String email, FilterCriteria filter) {
         User user = getUserByEmail(email);
-
         Specification<Ticket> ticketQuery = buildTicketQuery(user, filter);
-
         return ticketRepository.findAll(ticketQuery);
     }
 
     public Map<String, Object> getTicketDetail(String email, Long ticketId, String role) {
         User user = getUserByEmail(email);
-        Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
-        Map<String, Object> data = new HashMap<>();
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
 
-        if (ticketOpt.isPresent()) {
-            Ticket ticket = ticketOpt.get();
-
-            if ("USER".equals(role) && !ticket.getCreatedBy().equals(user)) {
-                throw new AppException("You cannot view the details of this ticket", HttpStatus.FORBIDDEN);
-            }
-
-            if ("AGENT".equals(role) && !ticket.getAssignedTo().equals(user)) {
-                throw new AppException("This ticket belongs to another agent", HttpStatus.FORBIDDEN);
-            }
-
-            List<Comment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
-            List<LogHistory> logHistories = logHistoryRepository.findByTicketIdOrderByCreatedAtDesc(ticketId);
-
-            data.put("ticket", ticket);
-            data.put("comments", comments);
-            data.put("logHistories", logHistories);
+        if ("USER".equals(role) && !ticket.getCreatedBy().equals(user)) {
+            throw new AppException("You cannot view the details of this ticket", HttpStatus.FORBIDDEN);
         }
+        if ("AGENT".equals(role) && !ticket.getAssignedTo().equals(user)) {
+            throw new AppException("This ticket belongs to another agent", HttpStatus.FORBIDDEN);
+        }
+
+        List<Comment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
+        List<LogHistory> logHistories = logHistoryRepository.findByTicketIdOrderByCreatedAtDesc(ticketId);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("ticket", ticket);
+        data.put("comments", comments);
+        data.put("logHistories", logHistories);
 
         return data;
     }
@@ -98,37 +92,35 @@ public class TicketService {
     @Transactional
     public void processTicket(String email, Long ticketId, Map<String, Object> body, String role) {
         User user = getUserByEmail(email);
-        Optional<Ticket> ticketOpt = ticketRepository.findForProcess(ticketId);
+        Ticket ticket = ticketRepository.findForProcess(ticketId)
+                .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
 
-        if (ticketOpt.isPresent()) {
-            Ticket ticket = ticketOpt.get();
+        if ("ADMIN".equals(role)) handleAdminProcessTicket(ticket, user, body);
+        else if ("AGENT".equals(role)) handleAgentProcessTicket(ticket, user);
 
-            if ("ADMIN".equals(role)) handleAdminProcessTicket(ticket, user, body);
-            else if ("AGENT".equals(role)) handleAgentProcessTicket(ticket, user);
-
-            ticketRepository.save(ticket);
-        }
+        ticketRepository.save(ticket);
     }
 
     @Transactional
     public void addComment(String email, Long ticketId, Map<String, Object> body) {
         User user = getUserByEmail(email);
-        Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
 
-        if (ticketOpt.isPresent()) {
-            String message = (body.get("message") != null ? body.get("message").toString() : null);
-            if (message == null || message.isBlank()) {
-                throw new IllegalArgumentException("Message cannot be null or blank");
-            }
-
-            Comment comment = Comment.builder()
-                    .message(message)
-                    .ticketId(ticketId)
-                    .user(user)
-                    .build();
-
-            commentRepository.save(comment);
+        if (!ticketRepository.existsById(ticketId)) {
+            throw new AppException("Ticket not found", HttpStatus.NOT_FOUND);
         }
+
+        String message = (body.get("message") != null ? body.get("message").toString() : null);
+        if (message == null || message.isBlank()) {
+            throw new AppException("Message cannot be null or blank", HttpStatus.BAD_REQUEST);
+        }
+
+        Comment comment = Comment.builder()
+                .message(message)
+                .ticketId(ticketId)
+                .user(user)
+                .build();
+
+        commentRepository.save(comment);
     }
 
     public List<Comment> getTicketComments(Long ticketId) {
