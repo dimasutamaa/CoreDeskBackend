@@ -42,6 +42,11 @@ public class UserService {
         );
     }
 
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+    }
+
     private Map<String, Object> getUserDataRecap(String email) {
         Map<String, Object> data = new HashMap<>();
         data.put("open", ticketRepository.countByCreatedBy_EmailAndStatus(email, TicketStatus.OPEN));

@@ -3,7 +3,7 @@ package com.coredesk.service;
 import com.coredesk.exception.AppException;
 import com.coredesk.dto.AuthRequest;
 import com.coredesk.dto.AuthResponse;
-import com.coredesk.dto.UserInfo;
+import com.coredesk.mapper.UserMapper;
 import com.coredesk.model.User;
 import com.coredesk.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +24,7 @@ public class AuthService {
     private final JwtTokenService jwtTokenService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
     public User createUser(User user) throws AppException {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
@@ -48,13 +49,7 @@ public class AuthService {
 
         String token = jwtTokenService.generateAccessToken(user);
 
-        UserInfo userInfo = new UserInfo();
-        userInfo.setId(user.getId());
-        userInfo.setUsername(user.getDisplayName());
-        userInfo.setEmail(user.getEmail());
-        userInfo.setRole(user.getRole());
-
-        return new AuthResponse(token, 86400L, userInfo);
+        return new AuthResponse(token, 86400L, userMapper.toDto(user));
     }
 
 }

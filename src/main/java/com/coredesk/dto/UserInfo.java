@@ -1,12 +1,10 @@
 package com.coredesk.dto;
 
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Builder;
 
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
 public class UserInfo {
     private Long id;
     private String username;

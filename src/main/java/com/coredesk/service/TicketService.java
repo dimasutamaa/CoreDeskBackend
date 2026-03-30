@@ -35,6 +35,7 @@ public class TicketService {
     private final UserRepository userRepository;
     private final LogHistoryRepository logHistoryRepository;
     private final CommentRepository commentRepository;
+    private final UserService userService;
 
     @Transactional
     public Ticket createTicket(TicketRequest request) {
@@ -62,12 +63,13 @@ public class TicketService {
 
     public List<Ticket> getUserTickets(String email, FilterCriteria filter) {
         User user = getUserByEmail(email);
+        User user = userService.getUserByEmail(email);
         Specification<Ticket> ticketQuery = buildTicketQuery(user, filter);
         return ticketRepository.findAll(ticketQuery);
     }
 
     public Map<String, Object> getTicketDetail(String email, Long ticketId, String role) {
-        User user = getUserByEmail(email);
+        User user = userService.getUserByEmail(email);
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
 
@@ -91,7 +93,7 @@ public class TicketService {
 
     @Transactional
     public void processTicket(String email, Long ticketId, Map<String, Object> body, String role) {
-        User user = getUserByEmail(email);
+        User user = userService.getUserByEmail(email);
         Ticket ticket = ticketRepository.findForProcess(ticketId)
                 .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
 
@@ -226,11 +228,6 @@ public class TicketService {
         log.setDescription(description);
 
         logHistoryRepository.save(log);
-    }
-
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
     }
 
 }
