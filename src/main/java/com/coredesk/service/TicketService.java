@@ -1,12 +1,13 @@
 package com.coredesk.service;
 
+import com.coredesk.dto.CommentResponse;
 import com.coredesk.dto.FilterCriteria;
 import com.coredesk.dto.TicketRequest;
 import com.coredesk.dto.TicketResponse;
 import com.coredesk.enums.Priority;
 import com.coredesk.enums.TicketStatus;
 import com.coredesk.exception.AppException;
-import com.coredesk.model.Comment;
+import com.coredesk.mapper.CommentMapper;
 import com.coredesk.mapper.TicketMapper;
 import com.coredesk.model.LogHistory;
 import com.coredesk.model.Ticket;
@@ -39,6 +40,7 @@ public class TicketService {
     private final CommentRepository commentRepository;
     private final UserService userService;
     private final TicketMapper ticketMapper;
+    private final CommentMapper commentMapper;
 
     @Transactional
     public Ticket createTicket(TicketRequest request) {
@@ -86,7 +88,10 @@ public class TicketService {
             throw new AppException("This ticket belongs to another agent", HttpStatus.FORBIDDEN);
         }
 
-        List<Comment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
+        List<CommentResponse> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
+                .stream()
+                .map(commentMapper::toDto)
+                .toList();
         List<LogHistory> logHistories = logHistoryRepository.findByTicketIdOrderByCreatedAtDesc(ticketId);
 
         Map<String, Object> data = new HashMap<>();
@@ -107,38 +112,6 @@ public class TicketService {
         else if ("AGENT".equals(role)) handleAgentProcessTicket(ticket, user);
 
         ticketRepository.save(ticket);
-    }
-
-    @Transactional
-    public void addComment(String email, Long ticketId, Map<String, Object> body) {
-        User user = getUserByEmail(email);
-
-        if (!ticketRepository.existsById(ticketId)) {
-            throw new AppException("Ticket not found", HttpStatus.NOT_FOUND);
-        }
-
-        String message = (body.get("message") != null ? body.get("message").toString() : null);
-        if (message == null || message.isBlank()) {
-            throw new AppException("Message cannot be null or blank", HttpStatus.BAD_REQUEST);
-        }
-
-        Comment comment = Comment.builder()
-                .message(message)
-                .ticketId(ticketId)
-                .user(user)
-                .build();
-
-        commentRepository.save(comment);
-    }
-
-    public List<Comment> getTicketComments(Long ticketId) {
-        Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
-
-        if (ticketOpt.isPresent()) {
-            return commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
-        }
-
-        return List.of();
     }
 
     private Specification<Ticket> buildTicketQuery(User user, FilterCriteria filter) {

@@ -56,20 +56,6 @@ public class TicketController {
         return new RestResponse();
     }
 
-    @PostMapping("/{ticketId}/comments")
-    public RestResponse addComment(@AuthenticationPrincipal UserDetails userDetails,
-                                    @PathVariable("ticketId") Long ticketId,
-                                    @RequestBody Map<String, Object> body) {
-        ticketService.addComment(userDetails.getUsername(), ticketId, body);
-        return new RestResponse();
-    }
-
-    @GetMapping("/{ticketId}/comments")
-    public RestResponse getTicketComments(@PathVariable("ticketId") Long ticketId) {
-        var data = ticketService.getTicketComments(ticketId);
-        return new RestResponse(data);
-    }
-
     @GetMapping("/filters")
     public RestResponse getFilterOptions() {
         Map<String, Object> data = new HashMap<>();
