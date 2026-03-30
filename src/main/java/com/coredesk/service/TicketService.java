@@ -2,10 +2,12 @@ package com.coredesk.service;
 
 import com.coredesk.dto.FilterCriteria;
 import com.coredesk.dto.TicketRequest;
+import com.coredesk.dto.TicketResponse;
 import com.coredesk.enums.Priority;
 import com.coredesk.enums.TicketStatus;
 import com.coredesk.exception.AppException;
 import com.coredesk.model.Comment;
+import com.coredesk.mapper.TicketMapper;
 import com.coredesk.model.LogHistory;
 import com.coredesk.model.Ticket;
 import com.coredesk.model.User;
@@ -36,6 +38,7 @@ public class TicketService {
     private final LogHistoryRepository logHistoryRepository;
     private final CommentRepository commentRepository;
     private final UserService userService;
+    private final TicketMapper ticketMapper;
 
     @Transactional
     public Ticket createTicket(TicketRequest request) {
@@ -61,11 +64,14 @@ public class TicketService {
         }
     }
 
-    public List<Ticket> getUserTickets(String email, FilterCriteria filter) {
-        User user = getUserByEmail(email);
+    public List<TicketResponse> getUserTickets(String email, FilterCriteria filter) {
         User user = userService.getUserByEmail(email);
         Specification<Ticket> ticketQuery = buildTicketQuery(user, filter);
-        return ticketRepository.findAll(ticketQuery);
+
+        return ticketRepository.findAll(ticketQuery)
+                .stream()
+                .map(ticketMapper::toDto)
+                .toList();
     }
 
     public Map<String, Object> getTicketDetail(String email, Long ticketId, String role) {
@@ -84,7 +90,7 @@ public class TicketService {
         List<LogHistory> logHistories = logHistoryRepository.findByTicketIdOrderByCreatedAtDesc(ticketId);
 
         Map<String, Object> data = new HashMap<>();
-        data.put("ticket", ticket);
+        data.put("ticket", ticketMapper.toDto(ticket));
         data.put("comments", comments);
         data.put("logHistories", logHistories);
 
