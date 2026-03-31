@@ -30,4 +30,11 @@ public class CommentController {
         return new RestResponse(data);
     }
 
+    @DeleteMapping("/{commentId}")
+    public RestResponse deleteComment(@AuthenticationPrincipal UserDetails userDetails,
+                                      @PathVariable("commentId") Long commentId) {
+        commentService.deleteComment(userDetails.getUsername(), commentId);
+        return new RestResponse();
+    }
+
 }

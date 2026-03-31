@@ -11,7 +11,6 @@ import com.coredesk.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,6 @@ public class CommentService {
     private final UserService userService;
     private final CommentMapper commentMapper;
 
-    @Transactional
     public void addComment(String email, Long ticketId, Map<String, Object> body) {
         User user = userService.getUserByEmail(email);
 
@@ -59,6 +57,18 @@ public class CommentService {
         }
 
         return List.of();
+    }
+
+    public void deleteComment(String email, Long commentId) {
+        User user = userService.getUserByEmail(email);
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new AppException("Comment not found", HttpStatus.NOT_FOUND));
+
+        if (!comment.getUser().equals(user)) {
+            throw new AppException("Not authorized to delete this comment", HttpStatus.FORBIDDEN);
+        }
+
+        commentRepository.delete(comment);
     }
 
 }
