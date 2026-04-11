@@ -3,6 +3,8 @@ package com.coredesk.controller;
 import com.coredesk.dto.FilterCriteria;
 import com.coredesk.dto.RestResponse;
 import com.coredesk.dto.TicketRequest;
+import com.coredesk.enums.Priority;
+import com.coredesk.enums.TicketStatus;
 import com.coredesk.service.TicketService;
 import com.coredesk.service.UserService;
 import jakarta.validation.Valid;
@@ -59,8 +61,8 @@ public class TicketController {
     @GetMapping("/filters")
     public RestResponse getFilterOptions() {
         Map<String, Object> data = new HashMap<>();
-        data.put("statuses", List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED"));
-        data.put("priorities", List.of("LOW", "MEDIUM", "HIGH"));
+        data.put("statuses", TicketStatus.values());
+        data.put("priorities", Priority.values());
         data.put("agents", userService.getUsersByRole("AGENT"));
         data.put("users", userService.getUsersByRole("USER"));
         return new RestResponse(data);

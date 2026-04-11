@@ -109,7 +109,8 @@ public class TicketService {
                 .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
 
         if ("ADMIN".equals(role)) handleAdminProcessTicket(ticket, user, body);
-        else if ("AGENT".equals(role)) handleAgentProcessTicket(ticket, user);
+        else if ("AGENT".equals(role)) handleAgentProcessTicket(ticket, user, body);
+        else handleUserProcessTicket(ticket, user, body);
 
         ticketRepository.save(ticket);
     }
@@ -167,7 +168,12 @@ public class TicketService {
             throw new AppException("This ticket already processed by other user", HttpStatus.FORBIDDEN);
         }
 
-        if (ticket.getStatus().equals(TicketStatus.OPEN)) {
+        String clientStatus = body.get("status").toString();
+        if (!ticket.getStatus().toString().equals(clientStatus)) {
+            throw new AppException("The current ticket status has changed", HttpStatus.BAD_REQUEST);
+        }
+
+        if (ticket.getStatus().equals(TicketStatus.OPEN) || ticket.getStatus().equals(TicketStatus.REOPENED)) {
             Long assignedTo = Long.valueOf(body.get("assignedTo").toString());
             User selectedUser = userRepository.findById(assignedTo)
                     .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
@@ -178,16 +184,44 @@ public class TicketService {
 
             createLogHistory(ticket.getId(), user.getDisplayName(),
                     ticket.getStatus(), "Ticket assigned to: " + selectedUser.getDisplayName());
+        } else if (ticket.getStatus().equals(TicketStatus.RESOLVED)) {
+            ticket.setStatus(TicketStatus.CLOSED);
+            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Ticket closed");
+        } else {
+            throw new AppException("Unsupported status", HttpStatus.BAD_REQUEST);
         }
     }
 
-    private void handleAgentProcessTicket(Ticket ticket, User user) {
-        if (ticket.getStatus().equals(TicketStatus.ASSIGNED)) {
+    private void handleAgentProcessTicket(Ticket ticket, User user, Map<String, Object> body) {
+        String clientStatus = body.get("status").toString();
+        if (!ticket.getStatus().toString().equals(clientStatus)) {
+            throw new AppException("The current ticket status has changed", HttpStatus.BAD_REQUEST);
+        }
+
+        if (ticket.getStatus().equals(TicketStatus.ASSIGNED) || ticket.getStatus().equals(TicketStatus.REOPENED)) {
             ticket.setStatus(TicketStatus.IN_PROGRESS);
             createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Agent is working on the ticket");
         } else if (ticket.getStatus().equals(TicketStatus.IN_PROGRESS)) {
+            ticket.setStatus(TicketStatus.CONFIRMATION);
+            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Waiting user confirmation");
+        } else {
+            throw new AppException("Unsupported status", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private void handleUserProcessTicket(Ticket ticket, User user, Map<String, Object> body) {
+        String action = String.valueOf(body.get("action"));
+
+        if (ticket.getStatus().equals(TicketStatus.CONFIRMATION) && "REJECT".equals(action)) {
+            ticket.setStatus(TicketStatus.REOPENED);
+            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Reopened after user rejected the fix");
+            // Send email
+        } else if (ticket.getStatus().equals(TicketStatus.CONFIRMATION)) {
             ticket.setStatus(TicketStatus.RESOLVED);
-            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Ticket resolved");
+            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "");
+            // Send email
+        } else {
+            throw new AppException("Unsupported condition", HttpStatus.BAD_REQUEST);
         }
     }
 
