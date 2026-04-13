@@ -5,6 +5,7 @@ import com.coredesk.dto.FilterCriteria;
 import com.coredesk.dto.TicketRequest;
 import com.coredesk.dto.TicketResponse;
 import com.coredesk.enums.Priority;
+import com.coredesk.enums.Role;
 import com.coredesk.enums.TicketStatus;
 import com.coredesk.exception.AppException;
 import com.coredesk.mapper.CommentMapper;
@@ -76,15 +77,15 @@ public class TicketService {
                 .toList();
     }
 
-    public Map<String, Object> getTicketDetail(String email, Long ticketId, String role) {
+    public Map<String, Object> getTicketDetail(String email, Long ticketId) {
         User user = userService.getUserByEmail(email);
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
 
-        if ("USER".equals(role) && !ticket.getCreatedBy().equals(user)) {
+        if (user.getRole().equals(Role.USER) && !ticket.getCreatedBy().equals(user)) {
             throw new AppException("You cannot view the details of this ticket", HttpStatus.FORBIDDEN);
         }
-        if ("AGENT".equals(role) && !ticket.getAssignedTo().equals(user)) {
+        if (user.getRole().equals(Role.AGENT) && !ticket.getAssignedTo().equals(user)) {
             throw new AppException("This ticket belongs to another agent", HttpStatus.FORBIDDEN);
         }
 
@@ -103,14 +104,14 @@ public class TicketService {
     }
 
     @Transactional
-    public void processTicket(String email, Long ticketId, Map<String, Object> body, String role) {
+    public void processTicket(String email, Long ticketId, Map<String, Object> body, String action) {
         User user = userService.getUserByEmail(email);
         Ticket ticket = ticketRepository.findForProcess(ticketId)
                 .orElseThrow(() -> new AppException("Ticket not found", HttpStatus.NOT_FOUND));
 
-        if ("ADMIN".equals(role)) handleAdminProcessTicket(ticket, user, body);
-        else if ("AGENT".equals(role)) handleAgentProcessTicket(ticket, user, body);
-        else handleUserProcessTicket(ticket, user, body);
+        if (user.getRole().equals(Role.ADMIN)) handleAdminProcessTicket(ticket, user, body);
+        else if (user.getRole().equals(Role.AGENT)) handleAgentProcessTicket(ticket, user, body);
+        else handleUserProcessTicket(ticket, user, action);
 
         ticketRepository.save(ticket);
     }
@@ -128,10 +129,9 @@ public class TicketService {
     }
 
     private void applyRoleFilter(User user, Root<Ticket> ticketRoot, CriteriaBuilder cb, List<Predicate> conditions) {
-        String role = user.getRole();
-        if ("USER".equals(role)) {
+        if (user.getRole().equals(Role.USER)) {
             conditions.add(cb.equal(ticketRoot.get("createdBy").get("id"), user.getId()));
-        } else if ("AGENT".equals(role)) {
+        } else if (user.getRole().equals(Role.AGENT)) {
             conditions.add(cb.equal(ticketRoot.get("assignedTo").get("id"), user.getId()));
         }
     }
@@ -209,9 +209,7 @@ public class TicketService {
         }
     }
 
-    private void handleUserProcessTicket(Ticket ticket, User user, Map<String, Object> body) {
-        String action = String.valueOf(body.get("action"));
-
+    private void handleUserProcessTicket(Ticket ticket, User user, String action) {
         if (ticket.getStatus().equals(TicketStatus.CONFIRMATION) && "REJECT".equals(action)) {
             ticket.setStatus(TicketStatus.REOPENED);
             createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Reopened after user rejected the fix");

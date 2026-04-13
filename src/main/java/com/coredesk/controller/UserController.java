@@ -1,6 +1,7 @@
 package com.coredesk.controller;
 
 import com.coredesk.dto.RestResponse;
+import com.coredesk.enums.Role;
 import com.coredesk.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,15 +16,14 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/users")
-    public RestResponse getUsersByRole(@RequestParam(value = "role", required = true) String role) {
+    public RestResponse getUsersByRole(@RequestParam(value = "role") Role role) {
         var data = userService.getUsersByRole(role);
         return new RestResponse(data);
     }
 
     @GetMapping("/users/recap")
-    public RestResponse getDataRecap(@AuthenticationPrincipal UserDetails userDetails,
-                                     @RequestParam(value = "role", required = true) String role) {
-        var data = userService.getDataRecapByRole(userDetails.getUsername(), role);
+    public RestResponse getDataRecap(@AuthenticationPrincipal UserDetails userDetails) {
+        var data = userService.getDataRecapByRole(userDetails.getUsername());
         return new RestResponse(data);
     }
 

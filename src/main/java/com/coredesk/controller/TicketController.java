@@ -4,6 +4,7 @@ import com.coredesk.dto.FilterCriteria;
 import com.coredesk.dto.RestResponse;
 import com.coredesk.dto.TicketRequest;
 import com.coredesk.enums.Priority;
+import com.coredesk.enums.Role;
 import com.coredesk.enums.TicketStatus;
 import com.coredesk.service.TicketService;
 import com.coredesk.service.UserService;
@@ -43,9 +44,8 @@ public class TicketController {
 
     @GetMapping("/{ticketId}")
     public RestResponse getTicketDetail(@AuthenticationPrincipal UserDetails userDetails,
-                                        @PathVariable("ticketId") Long ticketId,
-                                        @RequestParam(value = "role", required = false) String role) {
-        var data = ticketService.getTicketDetail(userDetails.getUsername(), ticketId, role);
+                                        @PathVariable("ticketId") Long ticketId) {
+        var data = ticketService.getTicketDetail(userDetails.getUsername(), ticketId);
         return new RestResponse(data);
     }
 
@@ -53,8 +53,8 @@ public class TicketController {
     public RestResponse processTicket(@AuthenticationPrincipal UserDetails userDetails,
                                   @PathVariable("ticketId") Long ticketId,
                                   @RequestBody Map<String, Object> body,
-                                  @RequestParam(value = "role", required = true) String role) {
-        ticketService.processTicket(userDetails.getUsername(), ticketId, body, role);
+                                  @RequestParam(value = "action", required = false) String action) {
+        ticketService.processTicket(userDetails.getUsername(), ticketId, body, action);
         return new RestResponse();
     }
 
@@ -63,8 +63,8 @@ public class TicketController {
         Map<String, Object> data = new HashMap<>();
         data.put("statuses", TicketStatus.values());
         data.put("priorities", Priority.values());
-        data.put("agents", userService.getUsersByRole("AGENT"));
-        data.put("users", userService.getUsersByRole("USER"));
+        data.put("agents", userService.getUsersByRole(Role.AGENT));
+        data.put("users", userService.getUsersByRole(Role.USER));
         return new RestResponse(data);
     }
 

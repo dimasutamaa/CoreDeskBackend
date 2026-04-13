@@ -1,5 +1,6 @@
 package com.coredesk.service;
 
+import com.coredesk.enums.Role;
 import com.coredesk.enums.TicketStatus;
 import com.coredesk.exception.AppException;
 import com.coredesk.model.User;
@@ -23,16 +24,16 @@ public class UserService {
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
 
-    public Map<String, Object> getDataRecapByRole(String email, String role) {
+    public Map<String, Object> getDataRecapByRole(String email) {
+        Role role = getUserByEmail(email).getRole();
         return switch (role) {
-            case "USER" -> getUserDataRecap(email);
-            case "ADMIN" -> getAdminDataRecap();
-            case "AGENT" -> getAgentDataRecap(email);
-            default -> throw new AppException("Unsupported role: " + role, HttpStatus.BAD_REQUEST);
+            case Role.USER -> getUserDataRecap(email);
+            case Role.ADMIN -> getAdminDataRecap();
+            case Role.AGENT -> getAgentDataRecap(email);
         };
     }
 
-    public Map<Long, String> getUsersByRole(String role) {
+    public Map<Long, String> getUsersByRole(Role role) {
         List<User> users = userRepository.findByRole(role);
         return users.stream().collect(
                 Collectors.toMap(

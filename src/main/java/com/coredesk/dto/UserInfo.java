@@ -1,5 +1,6 @@
 package com.coredesk.dto;
 
+import com.coredesk.enums.Role;
 import lombok.Getter;
 import lombok.Builder;
 
@@ -9,5 +10,5 @@ public class UserInfo {
     private Long id;
     private String username;
     private String email;
-    private String role;
+    private Role role;
 }
