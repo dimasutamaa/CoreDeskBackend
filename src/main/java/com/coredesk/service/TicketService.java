@@ -111,7 +111,7 @@ public class TicketService {
 
         if (user.getRole().equals(Role.ADMIN)) handleAdminProcessTicket(ticket, user, body);
         else if (user.getRole().equals(Role.AGENT)) handleAgentProcessTicket(ticket, user, body);
-        else handleUserProcessTicket(ticket, user, action);
+        else handleUserProcessTicket(ticket, user, body, action);
 
         ticketRepository.save(ticket);
     }
@@ -209,10 +209,11 @@ public class TicketService {
         }
     }
 
-    private void handleUserProcessTicket(Ticket ticket, User user, String action) {
+    private void handleUserProcessTicket(Ticket ticket, User user, Map<String, Object> body, String action) {
         if (ticket.getStatus().equals(TicketStatus.CONFIRMATION) && "REJECT".equals(action)) {
+            String notes = body.get("notes").toString();
             ticket.setStatus(TicketStatus.REOPENED);
-            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Reopened after user rejected the fix");
+            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Notes: " + notes);
             // Send email
         } else if (ticket.getStatus().equals(TicketStatus.CONFIRMATION)) {
             ticket.setStatus(TicketStatus.RESOLVED);
