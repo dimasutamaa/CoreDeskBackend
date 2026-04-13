@@ -59,7 +59,7 @@ public class TicketService {
 
         try {
             Ticket savedTicket = ticketRepository.save(ticket);
-            createLogHistory(savedTicket.getId(), user.getDisplayName(), savedTicket.getStatus(), "Ticket created");
+            createLogHistory(savedTicket, user, "Ticket created");
             return savedTicket;
         } catch (Exception e) {
             log.error("Failed to create ticket: {}", e.getMessage(), e);
@@ -182,11 +182,10 @@ public class TicketService {
             ticket.setAssignedTo(selectedUser);
             ticket.setProcessedBy(user);
 
-            createLogHistory(ticket.getId(), user.getDisplayName(),
-                    ticket.getStatus(), "Ticket assigned to: " + selectedUser.getDisplayName());
+            createLogHistory(ticket, user, "Ticket assigned to: " + selectedUser.getDisplayName());
         } else if (ticket.getStatus().equals(TicketStatus.RESOLVED)) {
             ticket.setStatus(TicketStatus.CLOSED);
-            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Ticket closed");
+            createLogHistory(ticket, user, "Ticket closed");
         } else {
             throw new AppException("Unsupported status", HttpStatus.BAD_REQUEST);
         }
@@ -200,10 +199,10 @@ public class TicketService {
 
         if (ticket.getStatus().equals(TicketStatus.ASSIGNED) || ticket.getStatus().equals(TicketStatus.REOPENED)) {
             ticket.setStatus(TicketStatus.IN_PROGRESS);
-            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Agent is working on the ticket");
+            createLogHistory(ticket, user, "Agent is working on the ticket");
         } else if (ticket.getStatus().equals(TicketStatus.IN_PROGRESS)) {
             ticket.setStatus(TicketStatus.CONFIRMATION);
-            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Waiting user confirmation");
+            createLogHistory(ticket, user, "Waiting user confirmation");
         } else {
             throw new AppException("Unsupported status", HttpStatus.BAD_REQUEST);
         }
@@ -213,11 +212,11 @@ public class TicketService {
         if (ticket.getStatus().equals(TicketStatus.CONFIRMATION) && "REJECT".equals(action)) {
             String notes = body.get("notes").toString();
             ticket.setStatus(TicketStatus.REOPENED);
-            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "Notes: " + notes);
+            createLogHistory(ticket, user, "Notes: " + notes);
             // Send email
         } else if (ticket.getStatus().equals(TicketStatus.CONFIRMATION)) {
             ticket.setStatus(TicketStatus.RESOLVED);
-            createLogHistory(ticket.getId(), user.getDisplayName(), ticket.getStatus(), "");
+            createLogHistory(ticket, user, "Waiting to be closed by admin");
             // Send email
         } else {
             throw new AppException("Unsupported condition", HttpStatus.BAD_REQUEST);
@@ -232,13 +231,12 @@ public class TicketService {
         };
     }
 
-    private void createLogHistory(Long ticketId, String username, TicketStatus status, String description) {
+    private void createLogHistory(Ticket ticket, User user, String description) {
         LogHistory log = new LogHistory();
-        log.setTicketId(ticketId);
-        log.setCreatedBy(username);
-        log.setStatus(status.name());
+        log.setTicketId(ticket.getId());
+        log.setCreatedBy(user.getDisplayName());
+        log.setStatus(ticket.getStatus().toString());
         log.setDescription(description);
-
         logHistoryRepository.save(log);
     }
 
