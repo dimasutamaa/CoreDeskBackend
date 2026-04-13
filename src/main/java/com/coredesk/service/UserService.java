@@ -62,9 +62,9 @@ public class UserService {
         data.put("resolved", ticketRepository.countByStatus(TicketStatus.RESOLVED));
         data.put("closed", ticketRepository.countByStatus(TicketStatus.CLOSED));
 
-        data.put("totalUsers", userRepository.countByRole("USER"));
-        data.put("admins", userRepository.countByRole("ADMIN"));
-        data.put("agents", userRepository.countByRole("AGENT"));
+        data.put("totalUsers", userRepository.countByRole(Role.USER));
+        data.put("admins", userRepository.countByRole(Role.ADMIN));
+        data.put("agents", userRepository.countByRole(Role.AGENT));
         return data;
     }
 
