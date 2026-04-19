@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -40,6 +41,7 @@ public class TicketService {
     private final LogHistoryRepository logHistoryRepository;
     private final CommentRepository commentRepository;
     private final UserService userService;
+    private final EmailService emailService;
     private final TicketMapper ticketMapper;
     private final CommentMapper commentMapper;
 
@@ -209,15 +211,23 @@ public class TicketService {
     }
 
     private void handleUserProcessTicket(Ticket ticket, User user, Map<String, Object> body, String action) {
+        List<String> emails = List.of(ticket.getAssignedTo().getEmail(), ticket.getProcessedBy().getEmail());
+        Map<String, Object> emailData = new HashMap<>();
+        emailData.put("ticketId", ticket.getId());
+        emailData.put("title", ticket.getTitle());
+
         if (ticket.getStatus().equals(TicketStatus.CONFIRMATION) && "REJECT".equals(action)) {
             String notes = body.get("notes").toString();
             ticket.setStatus(TicketStatus.REOPENED);
             createLogHistory(ticket, user, "Notes: " + notes);
-            // Send email
+
+            emailData.put("notes", notes);
+            emailService.sendRejectNotification(emails, emailData);
         } else if (ticket.getStatus().equals(TicketStatus.CONFIRMATION)) {
             ticket.setStatus(TicketStatus.RESOLVED);
             createLogHistory(ticket, user, "Waiting to be closed by admin");
-            // Send email
+
+            emailService.sendResolvedNotification(emails, emailData);
         } else {
             throw new AppException("Unsupported condition", HttpStatus.BAD_REQUEST);
         }
