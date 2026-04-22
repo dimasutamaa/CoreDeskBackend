@@ -14,7 +14,7 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/users")
+    @PostMapping("/register")
     public RestResponse createUser(@RequestBody User user) {
         var data = authService.createUser(user);
         return new RestResponse(data);
