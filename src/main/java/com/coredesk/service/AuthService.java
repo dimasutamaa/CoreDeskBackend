@@ -25,6 +25,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final SessionStore sessionStore;
 
     public User createUser(User user) throws AppException {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
@@ -36,20 +37,25 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthRequest request) throws AppException {
+        Authentication authentication;
         try {
-            Authentication authentication = authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (AuthenticationException e) {
             throw new AppException("Invalid email or password", HttpStatus.BAD_REQUEST);
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+        User user = (User) authentication.getPrincipal();
 
         String token = jwtTokenService.generateAccessToken(user);
+        sessionStore.put(user.getEmail(), token); // overwrites existing session
 
         return new AuthResponse(token, 86400L, userMapper.toDto(user));
+    }
+
+    public void logout(String email) {
+        sessionStore.remove(email);
+        SecurityContextHolder.clearContext();
     }
 
 }

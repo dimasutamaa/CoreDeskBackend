@@ -1,6 +1,7 @@
 package com.coredesk.filter;
 
 import com.coredesk.service.JwtTokenService;
+import com.coredesk.service.SessionStore;
 import com.coredesk.service.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,13 +23,14 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
     private final JwtTokenService jwtTokenService;
     private final UserDetailsServiceImpl userDetailsService;
+    private final SessionStore sessionStore;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        if (path.startsWith("/api/auth/")) {
+        if (path.equals("/api/auth/login") || path.equals("/api/auth/register")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -38,6 +40,12 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             String token = authorizationHeader.substring(7);
             String username = jwtTokenService.getEmailFromToken(token);
+
+            String activeToken = sessionStore.get(username);
+            if (!token.equals(activeToken)) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session invalidated");
+                return;
+            }
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);

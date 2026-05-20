@@ -5,6 +5,8 @@ import com.coredesk.dto.RestResponse;
 import com.coredesk.model.User;
 import com.coredesk.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,6 +26,12 @@ public class AuthController {
     public Object login(@RequestBody AuthRequest authRequest) {
         var data = authService.login(authRequest);
         return new RestResponse(data);
+    }
+
+    @PostMapping("/logout")
+    public RestResponse logout(@AuthenticationPrincipal UserDetails userDetails) {
+        authService.logout(userDetails.getUsername());
+        return new RestResponse();
     }
 
 }
